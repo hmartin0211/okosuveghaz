@@ -1,0 +1,55 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+#include <DHT.h>
+#include <ESP32Servo.h>
+
+// Alkatrészek példányosítása
+LiquidCrystal_I2C lcd(0x27, 20, 4); 
+DHT dht(4, DHT22);
+Servo ablak;
+
+void setup() {
+  Wire.begin(21, 22); // I2C busz indítása
+  lcd.init();         // LCD inicializálás
+  lcd.backlight();    // Háttérvilágítás be
+  dht.begin();        // Szenzor indítása
+
+  ablak.attach(2, 500, 2400); // Szervo a D2-es lábon
+  pinMode(5, OUTPUT);         // LED kimenet
+  pinMode(18, OUTPUT);        // Buzzer kimenet
+
+  // Kezdőképernyő
+  lcd.setCursor(3, 0);
+  lcd.print("OKOS UVEGHAZ");
+  lcd.setCursor(0, 3);
+  lcd.print("Keszitette: S.Patricia H.Martin");
+  delay(3000);
+  lcd.clear();
+}
+
+void loop() {
+  float t = dht.readTemperature(); // Hőmérséklet leolvasása
+  int pot = analogRead(32);        // Potméter állásának leolvasása
+  float limit = map(pot, 0, 4095, 20, 45); // Átváltás 20-45 fok közé
+
+  // Adatok kiírása az LCD-re
+  lcd.setCursor(0, 0);
+  lcd.print("Homerseklet: "); lcd.print(t, 1); lcd.print("C");
+  lcd.setCursor(0, 2);
+  lcd.print("Kuszobertek: "); lcd.print(limit, 1); lcd.print("C");
+
+  // Összehasonlítás és vezérlés
+  lcd.setCursor(0, 3);
+  if (t > limit) {
+    ablak.write(90);        // Ablak nyitása
+    digitalWrite(5, HIGH);  // Riasztó fény be
+    tone(18, 1000);         // Riasztó hang be
+    lcd.print("ABLAK: NYITVA  (!!)");
+  } else {
+    ablak.write(0);         // Ablak zárása
+    digitalWrite(5, LOW);   // Riasztó fény ki
+    noTone(18);             // Riasztó hang ki
+    lcd.print("ABLAK: ZARVA   (OK)");
+  }
+  delay(200); 
+}
